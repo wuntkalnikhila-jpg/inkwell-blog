@@ -159,6 +159,7 @@ const postRules = [
 
 /* -------------------------------- App -------------------------------- */
 const app = express();
+app.set('trust proxy', 1);
 app.use(express.json({ limit: '1mb' }));
 
 // Security headers. The CSP allows the inline script/styles, Google Fonts and the markdown libraries from cdnjs.
