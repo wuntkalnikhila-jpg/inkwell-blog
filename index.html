@@ -1,0 +1,463 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Inkwell</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,400;6..72,600;6..72,700&family=Figtree:wght@400;500;600&display=swap" rel="stylesheet" />
+  <!-- Markdown rendering (marked) and HTML sanitizing (DOMPurify) -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/12.0.2/marked.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
+  <style>
+    :root {
+      --paper: #ffffff; --ink: #1b2330; --muted: #667085; --line: #e4e7ec;
+      --accent: #0f6b5c; --accent-ink: #ffffff; --danger: #b42318; --tint: #f4f7f6;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --paper: #14181f; --ink: #e8ecf1; --muted: #98a2b3; --line: #2a313c;
+        --accent: #3fb8a3; --accent-ink: #0b1411; --danger: #f97066; --tint: #1b212a;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font-family: 'Figtree', system-ui, sans-serif; line-height: 1.5; }
+    a { color: inherit; }
+    h1, h2, h3, .body, .excerpt { font-family: 'Newsreader', Georgia, serif; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+    .nav { border-bottom: 1px solid var(--line); }
+    .nav-inner { max-width: 720px; margin: 0 auto; padding: 14px 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .brand { font-family: 'Newsreader', serif; font-size: 1.6rem; font-weight: 700; text-decoration: none; }
+    .nav nav { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+    .nav nav a { text-decoration: none; font-size: 0.95rem; }
+    .page { max-width: 720px; margin: 0 auto; padding: 32px 20px 80px; }
+    .page-title { font-size: 2rem; margin: 0 0 16px; }
+
+    .btn { display: inline-block; font: inherit; font-size: 0.92rem; font-weight: 500; padding: 8px 16px; border-radius: 999px; cursor: pointer; text-decoration: none; border: 1px solid var(--line); background: transparent; color: var(--ink); }
+    .btn:hover:not(:disabled) { border-color: var(--ink); }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+    .btn-primary:hover:not(:disabled) { border-color: var(--accent); filter: brightness(1.08); }
+    .btn-danger { color: var(--danger); border-color: var(--danger); }
+    .link-btn { background: none; border: 0; padding: 0; font: inherit; font-size: .92rem; color: var(--muted); cursor: pointer; text-decoration: underline; }
+    .link-btn:hover { color: var(--ink); }
+    .link-btn.danger:hover { color: var(--danger); }
+
+    .hero { padding: 24px 0 28px; border-bottom: 1px solid var(--line); margin-bottom: 8px; }
+    .hero h1 { font-size: clamp(2.2rem, 6vw, 3.4rem); line-height: 1.05; margin: 0 0 8px; letter-spacing: -.02em; }
+    .hero p { margin: 0 0 16px; color: var(--muted); font-size: 1.1rem; }
+    .search { display: flex; gap: 8px; }
+
+    .card { padding: 24px 0; border-bottom: 1px solid var(--line); }
+    .card h2 { font-size: 1.55rem; line-height: 1.2; margin: 4px 0 6px; }
+    .card h2 a { text-decoration: none; }
+    .card h2 a:hover { text-decoration: underline; }
+    .excerpt { color: var(--muted); font-size: 1.08rem; margin: 0 0 12px; }
+    .card-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
+    .row-actions { display: flex; gap: 16px; }
+    .meta { color: var(--muted); font-size: .88rem; margin: 0; }
+    .muted { color: var(--muted); }
+    .badge { display: inline-block; font-size: .75rem; font-weight: 600; padding: 1px 10px; margin-left: 8px; border-radius: 999px; border: 1px solid var(--line); color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .tags { display: flex; gap: 8px; flex-wrap: wrap; }
+    .tag { font-size: .82rem; padding: 3px 12px; border-radius: 999px; background: var(--tint); text-decoration: none; color: var(--ink); }
+    .tag:hover { background: var(--line); }
+    .pager { display: flex; justify-content: space-between; align-items: center; padding-top: 24px; }
+
+    .article h1 { font-size: clamp(2rem, 5vw, 2.8rem); line-height: 1.12; letter-spacing: -.015em; margin: 0 0 10px; }
+    .owner-actions { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
+    .body { font-size: 1.28rem; line-height: 1.7; margin: 32px 0; overflow-wrap: anywhere; }
+    .body p { margin: 0 0 1.3em; }
+    .body h1, .body h2, .body h3, .body h4 { line-height: 1.2; margin: 1.6em 0 .5em; letter-spacing: -.01em; }
+    .body h1 { font-size: 1.9rem; }
+    .body h2 { font-size: 1.6rem; }
+    .body h3 { font-size: 1.35rem; }
+    .body h4 { font-size: 1.15rem; }
+    .body ul, .body ol { margin: 0 0 1.3em; padding-left: 1.4em; }
+    .body li { margin: .25em 0; }
+    .body blockquote { margin: 0 0 1.3em; padding: 2px 0 2px 18px; border-left: 3px solid var(--accent); color: var(--muted); }
+    .body code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8em; background: var(--tint); padding: 2px 6px; border-radius: 4px; }
+    .body pre { background: var(--tint); padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 0 0 1.3em; }
+    .body pre code { background: none; padding: 0; font-size: .78em; }
+    .body a { color: var(--accent); }
+    .body hr { border: 0; border-top: 1px solid var(--line); margin: 2em 0; }
+    .body table { border-collapse: collapse; margin: 0 0 1.3em; font-size: .95em; }
+    .body th, .body td { border: 1px solid var(--line); padding: 6px 12px; text-align: left; }
+
+    .comments { margin-top: 48px; padding-top: 24px; border-top: 1px solid var(--line); }
+    .comments h3 { font-size: 1.4rem; margin: 0 0 16px; }
+    .comments ul { list-style: none; padding: 0; margin: 24px 0 0; }
+    .comments li { padding: 16px 0; border-bottom: 1px solid var(--line); }
+    .comments li p:not(.meta) { margin: 4px 0 6px; }
+    .comment-form { display: flex; flex-direction: column; gap: 10px; align-items: flex-start; }
+
+    input, textarea { font: inherit; color: var(--ink); background: var(--paper); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; width: 100%; }
+    input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; border-color: transparent; }
+    .auth { max-width: 380px; margin: 24px auto; display: flex; flex-direction: column; gap: 16px; }
+    .auth h1 { margin: 0; font-size: 2rem; }
+    .auth label { display: flex; flex-direction: column; gap: 6px; font-size: .92rem; font-weight: 500; }
+    .auth .btn { align-self: flex-start; }
+    .editor { display: flex; flex-direction: column; gap: 14px; }
+    .editor-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .title-input { font-family: 'Newsreader', serif; font-size: 2.2rem; font-weight: 700; border: 0; padding: 4px 0; border-radius: 0; border-bottom: 1px solid var(--line); }
+    .body-input { font-family: 'Newsreader', serif; font-size: 1.2rem; line-height: 1.6; resize: vertical; }
+    .hint { color: var(--muted); font-size: .85rem; margin: -6px 0 0; }
+    .error { color: var(--danger); margin: 8px 0; }
+    .status { color: var(--muted); padding: 32px 0; text-align: center; }
+    @media (max-width: 520px) { .body { font-size: 1.15rem; } }
+  </style>
+</head>
+<body>
+  <header class="nav"><div class="nav-inner" id="nav"></div></header>
+  <main class="page" id="app"></main>
+
+  <script>
+  /* ---------- Helpers ---------- */
+  // h('div', {class:'x', onclick: fn}, child, ...) builds DOM safely.
+  // Text goes in as text nodes, so user content can never inject HTML (no XSS).
+  // The one exception is post bodies, which are rendered from markdown and always
+  // pass through DOMPurify first (see renderMarkdown below).
+  function h(tag, props = {}, ...kids) {
+    const el = document.createElement(tag);
+    for (const [k, v] of Object.entries(props || {})) {
+      if (v === false || v == null) continue;
+      if (k.startsWith('on')) el.addEventListener(k.slice(2), v);
+      else if (k === 'class') el.className = v;
+      else if (k === 'value') el.value = v;
+      else if (v === true) el.setAttribute(k, '');
+      else el.setAttribute(k, v);
+    }
+    for (const kid of kids.flat()) {
+      if (kid == null || kid === false) continue;
+      el.append(kid.nodeType ? kid : document.createTextNode(kid));
+    }
+    return el;
+  }
+  const $app = document.getElementById('app');
+  const $nav = document.getElementById('nav');
+  const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' });
+  const go = (hash) => { location.hash = hash; };
+  const show = (...nodes) => { $app.replaceChildren(...nodes.flat().filter(Boolean)); window.scrollTo(0, 0); };
+  const status = (msg) => show(h('p', { class: 'status' }, msg));
+
+  /* ---------- Markdown ---------- */
+  const escapeHtml = (s) => s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  // Open links in a new tab, safely
+  if (window.DOMPurify) {
+    DOMPurify.addHook('afterSanitizeAttributes', (node) => {
+      if (node.tagName === 'A') {
+        node.setAttribute('target', '_blank');
+        node.setAttribute('rel', 'noopener noreferrer');
+      }
+    });
+  }
+
+  // Markdown -> sanitized HTML. If the libraries failed to load (offline),
+  // fall back to escaped plain paragraphs so the post is still readable and safe.
+  function renderMarkdown(src) {
+    try {
+      if (window.marked && window.DOMPurify) {
+        const html = marked.parse(src, { gfm: true, breaks: true });
+        return DOMPurify.sanitize(html, { FORBID_TAGS: ['img', 'style', 'form', 'input', 'button', 'iframe'] });
+      }
+    } catch (e) { /* fall through to plain text */ }
+    return src.split(/\n{2,}/).map((p) => '<p>' + escapeHtml(p).replace(/\n/g, '<br>') + '</p>').join('');
+  }
+
+  /* ---------- Auth state + API ---------- */
+  let token = localStorage.getItem('inkwell_token');
+  let user = null;
+  let afterLogin = null;
+
+  function setSession(t, u) {
+    token = t; user = u;
+    if (t) localStorage.setItem('inkwell_token', t); else localStorage.removeItem('inkwell_token');
+    renderNav();
+  }
+
+  async function api(path, { method = 'GET', body } = {}) {
+    const headers = {};
+    if (token) headers.Authorization = 'Bearer ' + token;
+    if (body) headers['Content-Type'] = 'application/json';
+    const res = await fetch('/api' + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.message || 'Request failed.');
+    return data;
+  }
+
+  /* ---------- Navbar ---------- */
+  function renderNav() {
+    const links = user
+      ? [
+          h('a', { href: '#/mine' }, 'My posts'),
+          h('a', { href: '#/write', class: 'btn btn-primary' }, 'Write'),
+          h('button', { class: 'link-btn', onclick: () => { setSession(null, null); go('#/'); } }, `Log out (${user.username})`),
+        ]
+      : [
+          h('a', { href: '#/login' }, 'Log in'),
+          h('a', { href: '#/register', class: 'btn btn-primary' }, 'Sign up'),
+        ];
+    $nav.replaceChildren(h('a', { href: '#/', class: 'brand' }, 'Inkwell'), h('nav', {}, links));
+  }
+
+  /* ---------- Shared pieces ---------- */
+  function tagLinks(tags) {
+    return h('div', { class: 'tags' }, tags.map((t) => h('a', { class: 'tag', href: '#/?tag=' + encodeURIComponent(t) }, t)));
+  }
+
+  function postCard(p, actions) {
+    return h('article', { class: 'card' },
+      h('p', { class: 'meta' },
+        `${p.author?.username} · ${fmtDate(p.createdAt)} · ${p.readMinutes} min read`,
+        p.published === false && h('span', { class: 'badge' }, 'Draft')),
+      h('h2', {}, h('a', { href: '#/post/' + p._id }, p.title)),
+      h('p', { class: 'excerpt' }, p.excerpt),
+      h('div', { class: 'card-foot' }, tagLinks(p.tags), actions)
+    );
+  }
+
+  /* ---------- Pages ---------- */
+  async function homePage(params) {
+    const tag = params.get('tag') || '', q = params.get('q') || '', page = parseInt(params.get('page')) || 1;
+    const searchInput = h('input', { placeholder: 'Search posts', value: q });
+    const hero = h('section', { class: 'hero' },
+      h('h1', {}, 'Stories worth finishing.'),
+      h('p', {}, 'Read what others are writing, or publish something of your own.'),
+      h('form', { class: 'search', onsubmit: (e) => {
+        e.preventDefault();
+        const v = searchInput.value.trim();
+        go(v ? '#/?q=' + encodeURIComponent(v) : '#/');
+      } }, searchInput, h('button', { class: 'btn' }, 'Search')),
+      tag && h('p', { class: 'muted' }, 'Showing posts tagged ', h('strong', {}, tag), ' ', h('a', { href: '#/', class: 'link-btn' }, 'Clear'))
+    );
+    show(hero, h('p', { class: 'status' }, 'Loading posts…'));
+    try {
+      const qs = new URLSearchParams(Object.entries({ tag, q, page }).filter(([, v]) => v)).toString();
+      const data = await api('/posts?' + qs);
+      const link = (n) => {
+        const p = new URLSearchParams(Object.entries({ tag, q, page: n }).filter(([, v]) => v));
+        return '#/?' + p.toString();
+      };
+      show(hero,
+        data.posts.length === 0 && h('p', { class: 'status' }, 'No posts found. Be the first to write one.'),
+        data.posts.map((p) => postCard(p)),
+        data.pages > 1 && h('div', { class: 'pager' },
+          h('button', { class: 'btn', disabled: page <= 1, onclick: () => go(link(page - 1)) }, 'Newer'),
+          h('span', {}, `Page ${data.page} of ${data.pages}`),
+          h('button', { class: 'btn', disabled: page >= data.pages, onclick: () => go(link(page + 1)) }, 'Older'))
+      );
+    } catch (err) {
+      show(hero, h('p', { class: 'error' }, err.message));
+    }
+  }
+
+  async function postPage(id) {
+    status('Loading…');
+    let post;
+    try { post = (await api('/posts/' + id)).post; }
+    catch (err) { return show(h('p', { class: 'error' }, err.message)); }
+
+    const isOwner = user && user._id === post.author._id;
+    const isDraft = post.published === false;
+    const errBox = h('p', { class: 'error' });
+
+    const remove = async () => {
+      if (!confirm('Delete this post? This cannot be undone.')) return;
+      try { await api('/posts/' + id, { method: 'DELETE' }); go('#/mine'); }
+      catch (err) { errBox.textContent = err.message; }
+    };
+
+    const publishNow = async () => {
+      errBox.textContent = '';
+      try {
+        await api('/posts/' + id, { method: 'PUT', body: { title: post.title, content: post.content, tags: post.tags, published: true } });
+        postPage(id);
+      } catch (err) { errBox.textContent = err.message; }
+    };
+
+    const bodyEl = h('div', { class: 'body' });
+    bodyEl.innerHTML = renderMarkdown(post.content); // sanitized by DOMPurify
+
+    const commentsBox = h('section', { class: 'comments' });
+    show(h('article', { class: 'article' },
+      h('h1', {}, post.title),
+      h('p', { class: 'meta' },
+        `${post.author.username} · ${fmtDate(post.createdAt)}` + (post.updatedAt !== post.createdAt ? ` · Edited ${fmtDate(post.updatedAt)}` : ''),
+        isDraft && h('span', { class: 'badge' }, 'Draft')),
+      isOwner && h('div', { class: 'owner-actions' },
+        isDraft && h('button', { class: 'btn btn-primary', onclick: publishNow }, 'Publish'),
+        h('a', { href: '#/edit/' + id, class: 'btn' }, 'Edit'),
+        h('button', { class: 'btn btn-danger', onclick: remove }, 'Delete')),
+      errBox,
+      bodyEl,
+      tagLinks(post.tags),
+      isDraft
+        ? h('p', { class: 'muted' }, 'This draft is only visible to you. Responses open once it is published.')
+        : commentsBox
+    ));
+    if (!isDraft) renderComments(commentsBox, id, post.author._id);
+  }
+
+  async function renderComments(box, postId, postAuthorId) {
+    let comments = [];
+    const errBox = h('p', { class: 'error' });
+    const draw = () => {
+      const textarea = h('textarea', { placeholder: 'Write a response', maxlength: 1000, rows: 3, required: true });
+      const form = user
+        ? h('form', { class: 'comment-form', onsubmit: async (e) => {
+            e.preventDefault();
+            errBox.textContent = '';
+            try {
+              const { comment } = await api(`/posts/${postId}/comments`, { method: 'POST', body: { text: textarea.value } });
+              comments.push(comment);
+              draw();
+            } catch (err) { errBox.textContent = err.message; }
+          } }, textarea, h('button', { class: 'btn btn-primary' }, 'Post response'))
+        : h('p', { class: 'muted' }, h('a', { href: '#/login' }, 'Log in'), ' to write a response.');
+
+      box.replaceChildren(
+        h('h3', {}, `Responses (${comments.length})`),
+        form,
+        errBox,
+        h('ul', {}, comments.map((c) => h('li', {},
+          h('p', { class: 'meta' }, `${c.author?.username} · ${fmtDate(c.createdAt)}`),
+          h('p', {}, c.text),
+          user && (user._id === c.author?._id || user._id === postAuthorId) &&
+            h('button', { class: 'link-btn danger', onclick: async () => {
+              try {
+                await api(`/posts/${postId}/comments/${c._id}`, { method: 'DELETE' });
+                comments = comments.filter((x) => x._id !== c._id);
+                draw();
+              } catch (err) { errBox.textContent = err.message; }
+            } }, 'Delete'))))
+      );
+    };
+    try { comments = (await api(`/posts/${postId}/comments`)).comments; } catch (err) { errBox.textContent = err.message; }
+    draw();
+  }
+
+  async function editorPage(id) {
+    let post = { title: '', content: '', tags: [], published: false };
+    if (id) {
+      status('Loading…');
+      try {
+        post = (await api('/posts/' + id)).post;
+        if (post.author._id !== user._id) return go('#/post/' + id);
+      } catch (err) { return show(h('p', { class: 'error' }, err.message)); }
+    }
+    // Existing published post: "Save changes" + "Move to drafts". New post or draft: "Publish" + "Save draft".
+    const isLive = !!id && post.published !== false;
+
+    const title = h('input', { class: 'title-input', placeholder: 'Title', maxlength: 150, required: true, value: post.title });
+    const content = h('textarea', { class: 'body-input', placeholder: 'Tell your story. Markdown works. Leave a blank line between paragraphs.', rows: 16, required: true, value: post.content });
+    const tags = h('input', { placeholder: 'Tags, separated by commas (up to 5)', value: post.tags.join(', ') });
+    const errBox = h('p', { class: 'error' });
+
+    let wantPublished = true;
+    const primary = h('button', { class: 'btn btn-primary', onclick: () => { wantPublished = true; } }, isLive ? 'Save changes' : 'Publish');
+    const secondary = h('button', { type: 'button', class: 'btn', onclick: () => { wantPublished = false; form.requestSubmit(); } }, isLive ? 'Move to drafts' : 'Save draft');
+
+    const form = h('form', { class: 'editor', onsubmit: async (e) => {
+      e.preventDefault();
+      const publish = wantPublished; wantPublished = true;
+      errBox.textContent = ''; primary.disabled = true; secondary.disabled = true;
+      try {
+        const body = { title: title.value, content: content.value, tags: tags.value, published: publish };
+        const { post: saved } = id ? await api('/posts/' + id, { method: 'PUT', body }) : await api('/posts', { method: 'POST', body });
+        go(publish ? '#/post/' + saved._id : '#/mine');
+      } catch (err) { errBox.textContent = err.message; primary.disabled = false; secondary.disabled = false; }
+    } },
+      title, content,
+      h('p', { class: 'hint' }, 'Markdown: # heading, **bold**, *italic*, - list, > quote, [text](https://link), `code`'),
+      tags, errBox,
+      h('div', { class: 'editor-actions' }, primary, secondary));
+    show(form);
+  }
+
+  async function minePage() {
+    status('Loading…');
+    try {
+      let { posts } = await api('/posts/mine');
+      const draw = () => show(
+        h('h1', { class: 'page-title' }, 'My posts'),
+        posts.length === 0 && h('p', { class: 'status' }, 'You haven’t written anything yet. ', h('a', { href: '#/write' }, 'Write your first post'), '.'),
+        posts.map((p) => postCard(p, h('span', { class: 'row-actions' },
+          h('a', { href: '#/edit/' + p._id, class: 'link-btn' }, 'Edit'),
+          h('button', { class: 'link-btn danger', onclick: async () => {
+            if (!confirm('Delete this post? This cannot be undone.')) return;
+            try { await api('/posts/' + p._id, { method: 'DELETE' }); posts = posts.filter((x) => x._id !== p._id); draw(); }
+            catch (err) { alert(err.message); }
+          } }, 'Delete'))))
+      );
+      draw();
+    } catch (err) { show(h('p', { class: 'error' }, err.message)); }
+  }
+
+  function authPage(mode) {
+    const isLogin = mode === 'login';
+    const username = h('input', { minlength: 3, maxlength: 30, required: true });
+    const email = h('input', { type: 'email', required: true });
+    const password = h('input', { type: 'password', minlength: 6, required: true });
+    const errBox = h('p', { class: 'error' });
+    const btn = h('button', { class: 'btn btn-primary' }, isLogin ? 'Log in' : 'Sign up');
+
+    show(h('form', { class: 'auth', onsubmit: async (e) => {
+      e.preventDefault();
+      errBox.textContent = ''; btn.disabled = true;
+      try {
+        const body = isLogin ? { email: email.value, password: password.value } : { username: username.value, email: email.value, password: password.value };
+        const data = await api('/auth/' + (isLogin ? 'login' : 'register'), { method: 'POST', body });
+        setSession(data.token, data.user);
+        const dest = afterLogin || '#/'; afterLogin = null;
+        go(dest);
+      } catch (err) { errBox.textContent = err.message; btn.disabled = false; }
+    } },
+      h('h1', {}, isLogin ? 'Log in' : 'Create your account'),
+      !isLogin && h('label', {}, 'Username', username),
+      h('label', {}, 'Email', email),
+      h('label', {}, 'Password', password),
+      errBox, btn,
+      h('p', { class: 'muted' }, isLogin
+        ? ['New here? ', h('a', { href: '#/register' }, 'Create an account')]
+        : ['Already have an account? ', h('a', { href: '#/login' }, 'Log in')])
+    ));
+  }
+
+  /* ---------- Router (hash based) ---------- */
+  function route() {
+    const raw = location.hash.slice(1) || '/';
+    const [path, qs] = raw.split('?');
+    const params = new URLSearchParams(qs || '');
+    const needsLogin = path === '/write' || path === '/mine' || path.startsWith('/edit/');
+
+    if (needsLogin && !user) {
+      afterLogin = '#' + raw;
+      return go('#/login');
+    }
+    if (path === '/') return homePage(params);
+    if (path.startsWith('/post/')) return postPage(path.split('/')[2]);
+    if (path === '/login') return authPage('login');
+    if (path === '/register') return authPage('register');
+    if (path === '/write') return editorPage(null);
+    if (path.startsWith('/edit/')) return editorPage(path.split('/')[2]);
+    if (path === '/mine') return minePage();
+    status('That page doesn’t exist.');
+  }
+
+  window.addEventListener('hashchange', route);
+
+  // Start: restore session if a token is saved, then show the page
+  (async function init() {
+    renderNav();
+    if (token) {
+      try { user = (await api('/auth/me')).user; }
+      catch { setSession(null, null); }
+      renderNav();
+    }
+    route();
+  })();
+  </script>
+</body>
+</html>
